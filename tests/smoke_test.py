@@ -13,7 +13,9 @@ from mcp.client.stdio import stdio_client
 ROOT = Path(__file__).resolve().parent.parent
 EXPECTED = {
     "calendar_list_calendars", "calendar_list_events", "reminders_list_lists",
-    "reminders_list_incomplete", "contacts_search",
+    "reminders_list_incomplete", "contacts_search", "calendar_create_event",
+    "calendar_update_event", "calendar_delete_event", "reminders_create", "reminders_update",
+    "reminders_delete",
 }
 
 

@@ -1,8 +1,8 @@
 {
   "name": "apple-icloud",
-  "displayName": "Apple iCloud Calendar, Reminders & Contacts (read-only)",
-  "version": "0.2.0",
-  "description": "Read-only access to your iCloud Calendar, Reminders and Contacts from your agent, using an Apple app-specific password. Also includes a skill that walks you through forwarding iCloud Mail to Gmail, Outlook or another mailbox your agent already reads. Nothing is sent, deleted or modified.",
+  "displayName": "Apple iCloud Calendar, Reminders & Contacts",
+  "version": "0.3.0",
+  "description": "Read your iCloud Calendar, Reminders and Contacts, and create, edit and delete calendar events and reminders, using an Apple app-specific password. Includes a skill that walks you through forwarding iCloud Mail to Gmail, Outlook or another mailbox your agent already reads. Contacts are read-only and there are no mail tools.",
   "author": {
     "name": "Pedro Custódio"
   },
@@ -17,7 +17,8 @@
     "contacts",
     "caldav",
     "carddav",
-    "read-only"
+    "events",
+    "reminders-write"
   ],
   "mcpServers": "mcp.json",
   "variables": {
