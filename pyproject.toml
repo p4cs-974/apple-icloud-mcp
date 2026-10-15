@@ -1,7 +1,7 @@
 [project]
 name = "apple-icloud-mcp"
-version = "0.1.0"
-description = "Read-only iCloud (Calendar, Reminders, Contacts, Mail) MCP server"
+version = "0.2.0"
+description = "Read-only iCloud (Calendar, Reminders, Contacts) MCP server"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Pedro Custódio" }]

@@ -1,10 +1,10 @@
 {
   "name": "apple-icloud",
-  "displayName": "Apple iCloud (read-only)",
-  "version": "0.1.0",
-  "description": "Read-only access to your iCloud Calendar, Reminders, Contacts and Mail from your agent, using an Apple app-specific password. Nothing is sent, deleted or modified.",
+  "displayName": "Apple iCloud Calendar, Reminders & Contacts (read-only)",
+  "version": "0.2.0",
+  "description": "Read-only access to your iCloud Calendar, Reminders and Contacts from your agent, using an Apple app-specific password. Also includes a skill that walks you through forwarding iCloud Mail to Gmail, Outlook or another mailbox your agent already reads. Nothing is sent, deleted or modified.",
   "author": {
-    "name": "Pedro Cust\u00f3dio"
+    "name": "Pedro Custódio"
   },
   "homepage": "https://github.com/p4cs-974/apple-icloud-mcp",
   "repository": "https://github.com/p4cs-974/apple-icloud-mcp",
@@ -15,10 +15,8 @@
     "calendar",
     "reminders",
     "contacts",
-    "mail",
     "caldav",
     "carddav",
-    "imap",
     "read-only"
   ],
   "mcpServers": "mcp.json",
@@ -34,11 +32,6 @@
         "type": "string",
         "title": "App-specific password",
         "description": "An app-specific password created at https://account.apple.com (Sign-In and Security > App-Specific Passwords). Never use your normal Apple ID password. You can revoke it at any time."
-      },
-      "APPLE_MAIL_USER": {
-        "type": "string",
-        "title": "iCloud Mail login (optional)",
-        "description": "Optional. Only for Mail: your @icloud.com address, if your Apple ID is a third-party email (for example Gmail). Leave blank to use the Apple ID."
       }
     },
     "required": [
@@ -46,5 +39,6 @@
       "APPLE_APP_PASSWORD"
     ]
   },
-  "logo": "assets/logo.svg"
+  "logo": "assets/logo.svg",
+  "skills": "skills"
 }

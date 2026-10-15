@@ -2,11 +2,17 @@
   "mcpServers": {
     "apple-icloud": {
       "command": "uv",
-      "args": ["run", "--quiet", "--directory", "${CURSOR_PLUGIN_ROOT}", "python", "server.py"],
+      "args": [
+        "run",
+        "--quiet",
+        "--directory",
+        "${CURSOR_PLUGIN_ROOT}",
+        "python",
+        "server.py"
+      ],
       "env": {
         "APPLE_ID": "${APPLE_ID}",
-        "APPLE_APP_PASSWORD": "${APPLE_APP_PASSWORD}",
-        "APPLE_MAIL_USER": "${APPLE_MAIL_USER}"
+        "APPLE_APP_PASSWORD": "${APPLE_APP_PASSWORD}"
       }
     }
   }

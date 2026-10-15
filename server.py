@@ -1,21 +1,15 @@
-"""Read-only iCloud MCP server (Calendar, Reminders, Contacts, Mail). stdio transport.
+"""Read-only iCloud MCP server (Calendar, Reminders, Contacts). stdio transport.
 
 Environment variables:
   APPLE_ID            (required) Apple ID email; used for CalDAV/CardDAV login.
   APPLE_APP_PASSWORD  (required) App-specific password created at account.apple.com.
-  APPLE_MAIL_USER     (optional) IMAP login for Mail. Defaults to APPLE_ID. Third-party Apple IDs
-                      (e.g. a Gmail address) may need their @icloud.com address here.
 
 The password is read from the environment, never logged, never returned by any tool, and never
 written to disk. This server only reads data: it has no send, delete or modify tools.
 """
-import email
-import imaplib
 import os
-import re
 import xml.etree.ElementTree as ET
-from datetime import date, datetime, timedelta, timezone
-from email.header import decode_header, make_header
+from datetime import date, datetime, timezone
 from urllib.parse import urljoin
 
 import httpx
@@ -31,10 +25,8 @@ def _env(name: str) -> str:
 
 
 APPLE_ID = _env("APPLE_ID")
-MAIL_USER = _env("APPLE_MAIL_USER") or APPLE_ID
 CALDAV = "https://caldav.icloud.com/"
 CARDDAV = "https://contacts.icloud.com/"
-IMAP_HOST = "imap.mail.me.com"
 
 mcp = FastMCP("apple-icloud")
 
@@ -242,123 +234,6 @@ def contacts_search(query: str = "", limit: int = 50) -> list[dict]:
     res = [x for x in _load_contacts() if not q or q in str(x).lower()]
     res.sort(key=lambda x: (x["name"] or "").lower())
     return res[:limit]
-
-
-# ---------------- Mail (IMAP, read-only) ----------------
-def _imap() -> imaplib.IMAP4_SSL:
-    pw = _pw()
-    try:
-        m = imaplib.IMAP4_SSL(IMAP_HOST, 993, timeout=15)
-    except OSError as e:
-        raise RuntimeError(
-            f"Could not connect to {IMAP_HOST}:993 ({type(e).__name__}). Mail tools need outbound IMAP "
-            "(TCP 993) access; this is blocked in some sandboxes/cloud environments that only allow "
-            "outbound HTTPS. Calendar, reminders and contacts use HTTPS and are unaffected.") from None
-    try:
-        m.login(MAIL_USER, pw)
-    except imaplib.IMAP4.error as e:
-        raise RuntimeError(f"iCloud IMAP login failed for {MAIL_USER}: {str(e)[:80]}. "
-                           "If the Apple ID is a non-Apple address, set APPLE_MAIL_USER to the @icloud.com address.") from None
-    return m
-
-
-def _dh(v) -> str:
-    try:
-        return str(make_header(decode_header(v or "")))
-    except Exception:
-        return v or ""
-
-
-def _quote(value: str) -> str:
-    """Quote a string for an IMAP command (escape backslashes and quotes, drop CR/LF)."""
-    value = value.replace("\r", " ").replace("\n", " ")
-    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
-
-
-def _fold(name: str) -> str:
-    return _quote(name)
-
-
-@mcp.tool()
-def mail_list_folders() -> list[str]:
-    """List IMAP mail folders."""
-    m = _imap()
-    try:
-        _, data = m.list()
-        out = []
-        for d in data:
-            mt = re.match(rb'\((.*?)\) "(.*?)" (.*)', d)
-            if mt:
-                out.append(mt.group(3).decode().strip('"'))
-        return out
-    finally:
-        m.logout()
-
-
-def _headers(m, uids) -> list[dict]:
-    res = []
-    for uid in uids:
-        _, d = m.uid("FETCH", uid, "(BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE)] BODY.PEEK[TEXT]<0:600>)")
-        hdr = body = b""
-        for part in d:
-            if isinstance(part, tuple):
-                if b"HEADER" in part[0]:
-                    hdr = part[1]
-                else:
-                    body = part[1]
-        msg = email.message_from_bytes(hdr)
-        snippet = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body.decode("utf-8", "ignore"))).strip()[:200]
-        res.append({"uid": int(uid), "from": _dh(msg["From"]), "to": _dh(msg["To"]), "subject": _dh(msg["Subject"]),
-                    "date": msg["Date"], "snippet": snippet})
-    return res
-
-
-@mcp.tool()
-def mail_search(folder: str = "INBOX", query: str = "", limit: int = 20) -> list[dict]:
-    """List/search recent messages in a folder (newest first). query is matched against subject/from/body via IMAP TEXT search; empty lists the latest."""
-    m = _imap()
-    try:
-        m.select(_fold(folder), readonly=True)
-        crit = ["TEXT", _quote(query)] if query else ["ALL"]
-        _, data = m.uid("SEARCH", None, *crit)
-        uids = data[0].split()[-limit:][::-1]
-        return _headers(m, uids)
-    finally:
-        m.logout()
-
-
-@mcp.tool()
-def mail_read_message(uid: int, folder: str = "INBOX", max_chars: int = 8000) -> dict:
-    """Read a message by UID (plain text body, truncated; attachments listed by name only)."""
-    m = _imap()
-    try:
-        m.select(_fold(folder), readonly=True)
-        _, d = m.uid("FETCH", str(uid), "(BODY.PEEK[])")
-        raw = next((p[1] for p in d if isinstance(p, tuple)), None)
-        if raw is None:
-            raise RuntimeError("message not found")
-        msg = email.message_from_bytes(raw)
-        text, html, atts = "", "", []
-        for p in msg.walk():
-            if p.is_multipart():
-                continue
-            if p.get_filename():
-                atts.append(_dh(p.get_filename()))
-                continue
-            payload = p.get_payload(decode=True)
-            if payload is None:
-                continue
-            s = payload.decode(p.get_content_charset() or "utf-8", "ignore")
-            if p.get_content_type() == "text/plain":
-                text += s
-            elif p.get_content_type() == "text/html":
-                html += s
-        if not text and html:
-            text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))
-        return {"uid": uid, "from": _dh(msg["From"]), "to": _dh(msg["To"]), "subject": _dh(msg["Subject"]),
-                "date": msg["Date"], "attachments": atts, "body": text.strip()[:max_chars]}
-    finally:
-        m.logout()
 
 
 if __name__ == "__main__":
